@@ -13,9 +13,7 @@ using namespace std;
 //! Transform an "absolute" 64-bit sequence number (zero-indexed) into a WrappingInt32
 //! \param n The input absolute 64-bit sequence number
 //! \param isn The initial sequence number
-WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
-    return isn + static_cast<uint32_t>(n);
-}
+WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) { return isn + static_cast<uint32_t>(n); }
 
 //! Transform a WrappingInt32 into an "absolute" 64-bit sequence number (zero-indexed)
 //! \param n The relative sequence number
@@ -32,7 +30,7 @@ uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
     // 1. 找到最小的合法abs seqno，合法的abs_seqno包括：a, a + 2^32, ...
     // 等价于：min_seqno = static_cast<uint64_t>(signed_n + signed_isn + UINT32_MAX + 1);
     uint32_t min_seqno = n.raw_value() - isn.raw_value();
-    
+
     // 2. 调整abs seqno使其接近checkpoint
     // 计算min_seqno与checkpoint的距离，实际上只需要关注checkpoint的低32位
     const uint32_t checkpoint_32 = static_cast<uint32_t>(checkpoint);
