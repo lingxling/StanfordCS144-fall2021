@@ -14,8 +14,7 @@ using namespace std;
 //! \param n The input absolute 64-bit sequence number
 //! \param isn The initial sequence number
 WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
-    DUMMY_CODE(n, isn);
-    return WrappingInt32{0};
+    return isn + static_cast<uint32_t>(n);
 }
 
 //! Transform a WrappingInt32 into an "absolute" 64-bit sequence number (zero-indexed)
@@ -29,6 +28,20 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 //! and the other stream runs from the remote TCPSender to the local TCPReceiver and
 //! has a different ISN.
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
-    DUMMY_CODE(n, isn, checkpoint);
-    return {};
+    ///*
+    // 1. 找到最小的合法abs seqno，合法的abs_seqno包括：a, a + 2^32, ...
+    // 等价于：min_seqno = static_cast<uint64_t>(signed_n + signed_isn + UINT32_MAX + 1);
+    uint32_t min_seqno = n.raw_value() - isn.raw_value();
+    
+    // 2. 调整abs seqno使其接近checkpoint
+    // 计算min_seqno与checkpoint的距离，实际上只需要关注checkpoint的低32位
+    const uint32_t checkpoint_32 = static_cast<uint32_t>(checkpoint);
+    const uint32_t offset = min_seqno - checkpoint_32;
+
+    if (offset <= (1U << 31)) {  // abs_seqno应该在检查点的右侧
+        return checkpoint + offset;
+    } else {  // abs_seqno应该在检查点的左侧
+        // 此时需要考虑checkpoint与((1UL << 32) - offset)的大小关系
+        return (checkpoint >= ((1UL << 32) - offset)) ? checkpoint - ((1UL << 32) - offset) : checkpoint + offset;
+    }
 }
