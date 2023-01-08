@@ -29,6 +29,7 @@ class Buffer {
         if (not _storage) {
             return {};
         }
+        // 取从starting_offset到结尾的那一段
         return {_storage->data() + _starting_offset, _storage->size() - _starting_offset};
     }
 

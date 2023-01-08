@@ -9,6 +9,22 @@
 #include <functional>
 #include <queue>
 
+class Timer {
+  private:
+    size_t _ticks{0};
+    bool _timing{false};
+
+  public:
+    void start() {
+        _ticks = 0;
+        _timing = true;
+    }
+    void stop() { _timing = false; }
+    void update(const size_t ms_since_last_tick) { _ticks += ms_since_last_tick; }
+    bool expired(const size_t timeout) const { return timing() && (_ticks >= timeout); }
+    bool timing() const { return _timing; }
+};
+
 //! \brief The "sender" part of a TCP implementation.
 
 //! Accepts a ByteStream, divides it up into segments and sends the
@@ -23,7 +39,7 @@ class TCPSender {
     //! outbound queue of segments that the TCPSender wants sent
     std::queue<TCPSegment> _segments_out{};
 
-    //! retransmission timer for the connection
+    //! retransmission timer for the connection 即，初始RTO
     unsigned int _initial_retransmission_timeout;
 
     //! outgoing stream of bytes that have not yet been sent
@@ -31,6 +47,26 @@ class TCPSender {
 
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
+
+    // 当前RTO
+    uint32_t _retransmission_timeout;
+
+    // 计时器
+    Timer _timer{};
+
+    // receiver希望得到的segment的absolute编号（即小于ackno的bytes都已经被接收）
+    uint64_t _ackno{0};
+
+    // 已发送但是未被receiver确认接收的segments
+    std::queue<TCPSegment> _outstanding_segments{};
+
+    // 接收窗口大小
+    size_t _rwnd{1};
+
+    // the number of consecutive retransmissions
+    uint32_t _consecutive_retransmissions{0};
+
+    bool _fin_sent{false};
 
   public:
     //! Initialize a TCPSender
