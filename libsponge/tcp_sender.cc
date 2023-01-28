@@ -70,7 +70,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     _rwnd = window_size;  // 根据测试代码，rwnd总是更新，不需要判断abs_ackno与_ackno的大小关系
 
     uint64_t abs_ackno = unwrap(ackno, _isn, next_seqno_absolute());
-    if (abs_ackno > next_seqno_absolute() || abs_ackno <= _ackno)
+    if (abs_ackno > next_seqno_absolute() || abs_ackno <= _ackno)  // 如果ack报文序列号大于期望序列号、或者小于已经被确认的序列号，则丢弃
         return;
 
     // 以下为abs_ackno > _ackno，即有新的seg被确认的情况
@@ -91,6 +91,9 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void TCPSender::tick(const size_t ms_since_last_tick) {
+    if (bytes_in_flight() == 0)  // 如果当前没有bytes_in_flight，就不必启动计时器
+        return;
+
     _timer.update(ms_since_last_tick);
     if (!_timer.expired(_retransmission_timeout))
         return;
@@ -99,8 +102,7 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
         _consecutive_retransmissions += 1;
         _retransmission_timeout <<= 1;
     }
-    if (!_outstanding_segments.empty())
-        segments_out().push(_outstanding_segments.front());
+    segments_out().push(_outstanding_segments.front());
     _timer.start();
 }
 
@@ -108,6 +110,7 @@ unsigned int TCPSender::consecutive_retransmissions() const { return _consecutiv
 
 void TCPSender::send_empty_segment() {
     TCPSegment seg;
+    seg.header().seqno = wrap(_next_seqno, _isn);
     seg.header().ackno = next_seqno();
     _segments_out.push(seg);
 }

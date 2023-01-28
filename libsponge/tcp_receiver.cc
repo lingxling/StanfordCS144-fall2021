@@ -12,7 +12,10 @@ using namespace std;
 
 void TCPReceiver::segment_received(const TCPSegment &seg) {
     const TCPHeader &header = seg.header();
-    if (_syn_rcv == false) {
+    // 如果seg不是SYN报文，且没有提供新信息，则丢弃该报文
+    if (_syn_rcv && header.seqno.raw_value() + seg.length_in_sequence_space() <= ackno().value().raw_value())
+        return;
+    if (!_syn_rcv) {
         if (!header.syn)
             return;
         _isn = header.seqno;

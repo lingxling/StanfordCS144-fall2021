@@ -13,6 +13,9 @@ class TCPConnection {
     TCPReceiver _receiver{_cfg.recv_capacity};
     TCPSender _sender{_cfg.send_capacity, _cfg.rt_timeout, _cfg.fixed_isn};
 
+    size_t _time_since_last_segment_received{0};
+    bool _active{true};
+
     //! outbound queue of segments that the TCPConnection wants sent
     std::queue<TCPSegment> _segments_out{};
 
@@ -20,6 +23,11 @@ class TCPConnection {
     //! for 10 * _cfg.rt_timeout milliseconds after both streams have ended,
     //! in case the remote TCPConnection doesn't know we've received its whole stream?
     bool _linger_after_streams_finish{true};
+
+    void _clean_shutdown();
+    void _unclean_shutdown();
+    void _send_segments();  // 操作sender发送报文，与write的不同：不包括写数据操作
+    bool _check_clean_shutdown_prereq();
 
   public:
     //! \name "Input" interface for the writer
